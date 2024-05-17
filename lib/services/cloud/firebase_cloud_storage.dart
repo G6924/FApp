@@ -6,10 +6,11 @@ import 'package:project/services/cloud/cloud_storage_constants.dart';
 import 'package:project/services/cloud/cloud_storage_exceptions.dart';
 
 class FirebaseCloudStorage {
-
   final notes = FirebaseFirestore.instance.collection('notes');
 
-  Future<void> deleteNote({required String documentId}) async {
+  Future<void> deleteNote({
+    required String documentId,
+  }) async {
     try {
       await notes.doc(documentId).delete();
     } catch (e) {
@@ -19,51 +20,67 @@ class FirebaseCloudStorage {
 
   Future<void> updateNote({
     required String documentId,
+    required String title,
     required String text,
-}) async {
+    required String imageUrl,
+  }) async {
     try {
-      await notes.doc(documentId).update({textFieldName: text});
+      await notes.doc(documentId).update({
+        titleFieldName: title,
+        textFieldName: text,
+        imageUrlFieldName: imageUrl,
+      });
     } catch (e) {
       throw CouldNotUpdateNoteException();
     }
   }
 
-  Stream<Iterable<CloudNote>> allNotes({required String ownerUserId}) =>
+  Stream<Iterable<CloudNote>> allNotes({
+    required String ownerUserId,
+  }) =>
       notes.snapshots().map((event) => event.docs
           .map((doc) => CloudNote.fromSnapshot(doc))
           .where((note) => note.ownerUserId == ownerUserId));
 
-  Future<Iterable<CloudNote>> getNotes({required String ownerUserId}) async {
+  Future<Iterable<CloudNote>> getNotes({
+    required String ownerUserId,
+  }) async {
     try {
       return await notes
           .where(
-          ownerUserIdFieldName,
-          isEqualTo: ownerUserId,
+        ownerUserIdFieldName,
+        isEqualTo: ownerUserId,
       )
           .get()
           .then(
-            (value) => value.docs.map((doc) => CloudNote.fromSnapshot(doc),),
+            (value) => value.docs.map((doc) => CloudNote.fromSnapshot(doc)),
       );
     } catch (e) {
       throw CouldNotGetAllNotesException();
     }
   }
 
-  Future<CloudNote> createNewNote({required String ownerUserId}) async {
-    final document =  await notes.add({
+  Future<CloudNote> createNewNote({
+    required String ownerUserId,
+  }) async {
+    final document = await notes.add({
       ownerUserIdFieldName: ownerUserId,
+      titleFieldName: '',
       textFieldName: '',
+      imageUrlFieldName: '',
     });
     final fetchedNote = await document.get();
     return CloudNote(
       documentId: fetchedNote.id,
       ownerUserId: ownerUserId,
-      text: ''
+      title: '',
+      text: '',
+      imageUrl: '',
     );
   }
 
   static final FirebaseCloudStorage _shared =
-      FirebaseCloudStorage._sharedInstance();
+  FirebaseCloudStorage._sharedInstance();
   FirebaseCloudStorage._sharedInstance();
   factory FirebaseCloudStorage() => _shared;
 }
