@@ -9,6 +9,7 @@ class CloudNote {
   final String title;
   final String text;
   final String imageUrl;
+  final String videoUrl;  // Add this line
 
   const CloudNote({
     required this.documentId,
@@ -16,6 +17,7 @@ class CloudNote {
     required this.title,
     required this.text,
     required this.imageUrl,
+    required this.videoUrl,  // Add this line
   });
 
   CloudNote.fromSnapshot(QueryDocumentSnapshot<Map<String, dynamic>> snapshot)
@@ -23,5 +25,6 @@ class CloudNote {
         ownerUserId = snapshot.data()[ownerUserIdFieldName],
         title = snapshot.data()[titleFieldName] as String,
         text = snapshot.data()[textFieldName] as String,
-        imageUrl = snapshot.data()[imageUrlFieldName] as String;
+        imageUrl = snapshot.data()[imageUrlFieldName] as String,
+        videoUrl = snapshot.data()[videoUrlFieldName] as String;  // Add this line
 }

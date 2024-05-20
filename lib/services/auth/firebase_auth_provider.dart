@@ -1,12 +1,10 @@
-
+// firebase_auth_provider.dart
 import 'package:firebase_core/firebase_core.dart';
 import 'package:project/firebase_options.dart';
 import 'package:project/services/auth/auth_user.dart';
 import 'package:project/services/auth/auth_provider.dart';
 import 'package:project/services/auth/auth_exceptions.dart';
-
-import 'package:firebase_auth/firebase_auth.dart'
-    show FirebaseAuth, FirebaseAuthException;
+import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth, FirebaseAuthException, User;
 
 class FirebaseAuthProvider implements AuthProvider {
   @override
@@ -33,8 +31,8 @@ class FirebaseAuthProvider implements AuthProvider {
   }) async {
     try {
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: email,
-          password: password,
+        email: email,
+        password: password,
       );
       final user = currentUser;
       if (user != null) {
@@ -74,8 +72,8 @@ class FirebaseAuthProvider implements AuthProvider {
   }) async {
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: email,
-          password: password,
+        email: email,
+        password: password,
       );
       final user = currentUser;
       if (user != null) {
@@ -86,7 +84,7 @@ class FirebaseAuthProvider implements AuthProvider {
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
         throw UserNotFoundAuthException();
-      } else if(e.code == 'wrong-password'){
+      } else if (e.code == 'wrong-password') {
         throw WrongPasswordAuthException();
       } else {
         throw GenericAuthException();
@@ -106,4 +104,17 @@ class FirebaseAuthProvider implements AuthProvider {
     }
   }
 
+  @override
+  Future<void> updateProfile({
+    String? displayName,
+    String? photoURL,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await user.updateProfile(displayName: displayName, photoURL: photoURL);
+      await user.reload();
+    } else {
+      throw UserNotLoggedInAuthException();
+    }
+  }
 }

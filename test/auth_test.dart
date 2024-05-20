@@ -137,4 +137,10 @@ class MockAuthProvider implements AuthProvider {
     );
     _user = newUser;
   }
+
+  @override
+  Future<void> updateProfile({String? displayName, String? photoURL}) {
+    // TODO: implement updateProfile
+    throw UnimplementedError();
+  }
 }

@@ -1,3 +1,4 @@
+// auth_service.dart
 import 'package:project/services/auth/auth_provider.dart';
 import 'package:project/services/auth/auth_user.dart';
 import 'package:project/services/auth/firebase_auth_provider.dart';
@@ -16,8 +17,8 @@ class AuthService implements AuthProvider {
     required String email,
     required String password,
   }) => provider.createUser(
-      email: email,
-      password: password,
+    email: email,
+    password: password,
   );
 
   @override
@@ -28,8 +29,8 @@ class AuthService implements AuthProvider {
     required String email,
     required String password,
   }) => provider.logIn(
-      email: email,
-      password: password,
+    email: email,
+    password: password,
   );
 
   @override
@@ -38,4 +39,11 @@ class AuthService implements AuthProvider {
   @override
   Future<void> initialize() => provider.initialize();
 
+  Future<void> updateProfile({
+    String? displayName,
+    String? photoURL,
+  }) => provider.updateProfile(
+    displayName: displayName,
+    photoURL: photoURL,
+  );
 }

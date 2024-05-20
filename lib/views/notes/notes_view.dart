@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:project/constants/routes.dart';
 import 'package:project/enums/menu_action.dart';
 import 'package:project/services/auth/auth_service.dart';
@@ -21,10 +22,28 @@ class _NotesViewState extends State<NotesView> {
   late final FirebaseCloudStorage _notesService;
   String get userId => AuthService.firebase().currentUser!.id;
 
+  String _searchQuery = '';
+  late TextEditingController _searchController;
+
   @override
   void initState() {
     _notesService = FirebaseCloudStorage();
+    _searchController = TextEditingController();
+    _searchController.addListener(_onSearchChanged);
     super.initState();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchQuery = _searchController.text;
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -67,7 +86,27 @@ class _NotesViewState extends State<NotesView> {
                   ];
                 },
               ),
+              IconButton( // Button to navigate to profile
+                onPressed: () {
+                  Navigator.of(context).pushNamed(profileRoute);
+                },
+                icon: const Icon(Icons.person),
+              ),
             ],
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(kToolbarHeight),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    labelText: 'Search Notes',
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ),
           ),
           SliverFillRemaining(
             child: StreamBuilder(
@@ -78,10 +117,16 @@ class _NotesViewState extends State<NotesView> {
                   case ConnectionState.active:
                     if (snapshot.hasData) {
                       final allNotes = snapshot.data as Iterable<CloudNote>;
+                      final filteredNotes = _searchQuery.isEmpty
+                          ? allNotes
+                          : allNotes.where((note) =>
+                      note.title.contains(_searchQuery) ||
+                          note.text.contains(_searchQuery));
                       return NotesListView(
-                        notes: allNotes,
+                        notes: filteredNotes,
                         onDeleteNote: (note) async {
-                          await _notesService.deleteNote(documentId: note.documentId);
+                          await _notesService.deleteNote(
+                              documentId: note.documentId);
                         },
                         onTap: (note) {
                           Navigator.of(context).pushNamed(

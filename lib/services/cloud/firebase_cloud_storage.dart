@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:project/services/cloud/cloud_note.dart';
 import 'package:project/services/cloud/cloud_storage_constants.dart';
@@ -23,12 +22,14 @@ class FirebaseCloudStorage {
     required String title,
     required String text,
     required String imageUrl,
+    required String videoUrl,  // Add this line
   }) async {
     try {
       await notes.doc(documentId).update({
         titleFieldName: title,
         textFieldName: text,
         imageUrlFieldName: imageUrl,
+        videoUrlFieldName: videoUrl,  // Add this line
       });
     } catch (e) {
       throw CouldNotUpdateNoteException();
@@ -68,6 +69,7 @@ class FirebaseCloudStorage {
       titleFieldName: '',
       textFieldName: '',
       imageUrlFieldName: '',
+      videoUrlFieldName: '',  // Add this line
     });
     final fetchedNote = await document.get();
     return CloudNote(
@@ -76,7 +78,25 @@ class FirebaseCloudStorage {
       title: '',
       text: '',
       imageUrl: '',
+      videoUrl: '',  // Add this line
     );
+  }
+
+  Future<Iterable<CloudNote>> searchNotes({
+    required String query,
+    required String ownerUserId,
+  }) async {
+    try {
+      final snapshot = await notes
+          .where(ownerUserIdFieldName, isEqualTo: ownerUserId)
+          .get();
+
+      final allNotes = snapshot.docs.map((doc) => CloudNote.fromSnapshot(doc));
+      return allNotes.where((note) =>
+      note.title.contains(query) || note.text.contains(query));
+    } catch (e) {
+      throw CouldNotGetAllNotesException();
+    }
   }
 
   static final FirebaseCloudStorage _shared =

@@ -5,6 +5,7 @@ import 'package:project/utilities/generics/get_arguments.dart';
 import 'package:project/services/cloud/cloud_note.dart';
 import 'package:project/services/cloud/firebase_cloud_storage.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 class CreateUpdateNoteView extends StatefulWidget {
   const CreateUpdateNoteView({Key? key}) : super(key: key);
@@ -19,6 +20,8 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
   late final TextEditingController _titleController;
   late final TextEditingController _textController;
   late final TextEditingController _imageUrlController;
+  late final TextEditingController _videoUrlController;
+  YoutubePlayerController? _youtubePlayerController;
 
   @override
   void initState() {
@@ -26,6 +29,8 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
     _titleController = TextEditingController();
     _textController = TextEditingController();
     _imageUrlController = TextEditingController();
+    _videoUrlController = TextEditingController();
+    _videoUrlController.addListener(_initializeVideoPlayer);
     super.initState();
   }
 
@@ -37,11 +42,13 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
     final title = _titleController.text;
     final text = _textController.text;
     final imageUrl = _imageUrlController.text;
+    final videoUrl = _videoUrlController.text;
     await _notesService.updateNote(
       documentId: note.documentId,
       title: title,
       text: text,
       imageUrl: imageUrl,
+      videoUrl: videoUrl,
     );
   }
 
@@ -49,9 +56,11 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
     _titleController.removeListener(_textControllerListener);
     _textController.removeListener(_textControllerListener);
     _imageUrlController.removeListener(_textControllerListener);
+    _videoUrlController.removeListener(_textControllerListener);
     _titleController.addListener(_textControllerListener);
     _textController.addListener(_textControllerListener);
     _imageUrlController.addListener(_textControllerListener);
+    _videoUrlController.addListener(_textControllerListener);
   }
 
   Future<CloudNote> createOrGetExistingNote(BuildContext context) async {
@@ -61,6 +70,8 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
       _titleController.text = widgetNote.title;
       _textController.text = widgetNote.text;
       _imageUrlController.text = widgetNote.imageUrl;
+      _videoUrlController.text = widgetNote.videoUrl;
+      _initializeVideoPlayer();
       return widgetNote;
     }
 
@@ -80,6 +91,7 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
     if (_titleController.text.isEmpty &&
         _textController.text.isEmpty &&
         _imageUrlController.text.isEmpty &&
+        _videoUrlController.text.isEmpty &&
         note != null) {
       _notesService.deleteNote(documentId: note.documentId);
     }
@@ -90,14 +102,31 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
     final title = _titleController.text;
     final text = _textController.text;
     final imageUrl = _imageUrlController.text;
+    final videoUrl = _videoUrlController.text;
     if (note != null &&
-        (title.isNotEmpty || text.isNotEmpty || imageUrl.isNotEmpty)) {
+        (title.isNotEmpty || text.isNotEmpty || imageUrl.isNotEmpty || videoUrl.isNotEmpty)) {
       await _notesService.updateNote(
         documentId: note.documentId,
         title: title,
         text: text,
         imageUrl: imageUrl,
+        videoUrl: videoUrl,
       );
+    }
+  }
+
+  void _initializeVideoPlayer() {
+    final videoUrl = _videoUrlController.text;
+    if (videoUrl.isNotEmpty) {
+      final youtubeVideoId = YoutubePlayer.convertUrlToId(videoUrl);
+      if (youtubeVideoId != null) {
+        _youtubePlayerController = YoutubePlayerController(
+          initialVideoId: youtubeVideoId,
+          flags: YoutubePlayerFlags(
+            autoPlay: false,
+          ),
+        );
+      }
     }
   }
 
@@ -108,6 +137,8 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
     _titleController.dispose();
     _textController.dispose();
     _imageUrlController.dispose();
+    _videoUrlController.dispose();
+    _youtubePlayerController?.dispose();
     super.dispose();
   }
 
@@ -180,16 +211,40 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
+                                onChanged: (value) {
+                                  setState(() {});
+                                },
                               ),
                               const SizedBox(height: 16),
                               if (_imageUrlController.text.isNotEmpty)
                                 Image.network(
                                   _imageUrlController.text,
                                   errorBuilder: (context, error, stackTrace) {
-                                    return const Text(
-                                      'Invalid image URL',
-                                      style: TextStyle(color: Colors.red),
-                                    );
+                                    return const Text('Could not load image');
+                                  },
+                                ),
+                              const SizedBox(height: 16),
+                              TextField(
+                                controller: _videoUrlController,
+                                decoration: InputDecoration(
+                                  labelText: 'Video URL',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              if (_videoUrlController.text.isNotEmpty && _youtubePlayerController != null)
+                                YoutubePlayer(
+                                  controller: _youtubePlayerController!,
+                                  showVideoProgressIndicator: true,
+                                  progressIndicatorColor: Colors.amber,
+                                  progressColors: const ProgressBarColors(
+                                    playedColor: Colors.amber,
+                                    handleColor: Colors.amberAccent,
+                                  ),
+                                  onReady: () {
+                                    print('Player is ready.');
                                   },
                                 ),
                             ],
