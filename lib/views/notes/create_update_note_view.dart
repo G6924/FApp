@@ -22,6 +22,8 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
   late final TextEditingController _imageUrlController;
   late final TextEditingController _videoUrlController;
   YoutubePlayerController? _youtubePlayerController;
+  bool _showImage = true;
+  bool _showVideo = false;
 
   @override
   void initState() {
@@ -30,37 +32,35 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
     _textController = TextEditingController();
     _imageUrlController = TextEditingController();
     _videoUrlController = TextEditingController();
-    _videoUrlController.addListener(_initializeVideoPlayer);
     super.initState();
   }
 
-  void _textControllerListener() async {
-    final note = _note;
-    if (note == null) {
-      return;
-    }
-    final title = _titleController.text;
-    final text = _textController.text;
-    final imageUrl = _imageUrlController.text;
+  void _initializeVideoPlayer() {
     final videoUrl = _videoUrlController.text;
-    await _notesService.updateNote(
-      documentId: note.documentId,
-      title: title,
-      text: text,
-      imageUrl: imageUrl,
-      videoUrl: videoUrl,
-    );
-  }
-
-  void _setupTextControllerListener() {
-    _titleController.removeListener(_textControllerListener);
-    _textController.removeListener(_textControllerListener);
-    _imageUrlController.removeListener(_textControllerListener);
-    _videoUrlController.removeListener(_textControllerListener);
-    _titleController.addListener(_textControllerListener);
-    _textController.addListener(_textControllerListener);
-    _imageUrlController.addListener(_textControllerListener);
-    _videoUrlController.addListener(_textControllerListener);
+    if (videoUrl.isNotEmpty) {
+      final youtubeVideoId = YoutubePlayer.convertUrlToId(videoUrl);
+      if (youtubeVideoId != null) {
+        setState(() {
+          _youtubePlayerController = YoutubePlayerController(
+            initialVideoId: youtubeVideoId,
+            flags: const YoutubePlayerFlags(
+              autoPlay: false,
+            ),
+          );
+          _showVideo = true;
+        });
+      } else {
+        setState(() {
+          _youtubePlayerController = null;
+          _showVideo = false;
+        });
+      }
+    } else {
+      setState(() {
+        _youtubePlayerController = null;
+        _showVideo = false;
+      });
+    }
   }
 
   Future<CloudNote> createOrGetExistingNote(BuildContext context) async {
@@ -71,7 +71,6 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
       _textController.text = widgetNote.text;
       _imageUrlController.text = widgetNote.imageUrl;
       _videoUrlController.text = widgetNote.videoUrl;
-      _initializeVideoPlayer();
       return widgetNote;
     }
 
@@ -86,54 +85,34 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
     return newNote;
   }
 
-  void _deleteNoteIfTextIsEmpty() {
+  void _saveNote() async {
     final note = _note;
-    if (_titleController.text.isEmpty &&
-        _textController.text.isEmpty &&
-        _imageUrlController.text.isEmpty &&
-        _videoUrlController.text.isEmpty &&
-        note != null) {
-      _notesService.deleteNote(documentId: note.documentId);
-    }
-  }
-
-  void _saveNoteIfTextNotEmpty() async {
-    final note = _note;
-    final title = _titleController.text;
-    final text = _textController.text;
-    final imageUrl = _imageUrlController.text;
-    final videoUrl = _videoUrlController.text;
-    if (note != null &&
-        (title.isNotEmpty || text.isNotEmpty || imageUrl.isNotEmpty || videoUrl.isNotEmpty)) {
-      await _notesService.updateNote(
-        documentId: note.documentId,
-        title: title,
-        text: text,
-        imageUrl: imageUrl,
-        videoUrl: videoUrl,
-      );
-    }
-  }
-
-  void _initializeVideoPlayer() {
-    final videoUrl = _videoUrlController.text;
-    if (videoUrl.isNotEmpty) {
-      final youtubeVideoId = YoutubePlayer.convertUrlToId(videoUrl);
-      if (youtubeVideoId != null) {
-        _youtubePlayerController = YoutubePlayerController(
-          initialVideoId: youtubeVideoId,
-          flags: YoutubePlayerFlags(
-            autoPlay: false,
-          ),
+    if (note != null) {
+      final title = _titleController.text;
+      final text = _textController.text;
+      final imageUrl = _imageUrlController.text;
+      final videoUrl = _videoUrlController.text;
+      if (title.isNotEmpty || text.isNotEmpty || imageUrl.isNotEmpty || videoUrl.isNotEmpty) {
+        await _notesService.updateNote(
+          documentId: note.documentId,
+          title: title,
+          text: text,
+          imageUrl: imageUrl,
+          videoUrl: videoUrl,
         );
+        if (videoUrl.isNotEmpty) {
+          _initializeVideoPlayer();
+        }
+        setState(() {
+          _showImage = imageUrl.isNotEmpty;
+          _showVideo = videoUrl.isNotEmpty;
+        });
       }
     }
   }
 
   @override
   void dispose() {
-    _deleteNoteIfTextIsEmpty();
-    _saveNoteIfTextNotEmpty();
     _titleController.dispose();
     _textController.dispose();
     _imageUrlController.dispose();
@@ -159,6 +138,13 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
             },
             icon: const Icon(Icons.share),
           ),
+          IconButton(
+            onPressed: () async {
+              _saveNote();
+              Navigator.of(context).pop();
+            },
+            icon: const Icon(Icons.save),
+          ),
         ],
       ),
       body: Padding(
@@ -168,7 +154,6 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
           builder: (context, snapshot) {
             switch (snapshot.connectionState) {
               case ConnectionState.done:
-                _setupTextControllerListener();
                 return SingleChildScrollView(
                   child: Column(
                     children: [
@@ -188,7 +173,15 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
+                                  suffixIcon: IconButton(
+                                    onPressed: () {
+                                      _titleController.clear();
+                                    },
+                                    icon: const Icon(Icons.clear),
+                                  ),
                                 ),
+                                keyboardType: TextInputType.multiline,
+                                maxLines: null,
                               ),
                               const SizedBox(height: 16),
                               TextField(
@@ -197,6 +190,12 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                                   labelText: 'Text',
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  suffixIcon: IconButton(
+                                    onPressed: () {
+                                      _textController.clear();
+                                    },
+                                    icon: const Icon(Icons.clear),
                                   ),
                                 ),
                                 keyboardType: TextInputType.multiline,
@@ -210,13 +209,19 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
+                                  suffixIcon: IconButton(
+                                    onPressed: () {
+                                      _imageUrlController.clear();
+                                      setState(() {
+                                        _showImage = false;
+                                      });
+                                    },
+                                    icon: const Icon(Icons.clear),
+                                  ),
                                 ),
-                                onChanged: (value) {
-                                  setState(() {});
-                                },
                               ),
                               const SizedBox(height: 16),
-                              if (_imageUrlController.text.isNotEmpty)
+                              if (_showImage)
                                 Image.network(
                                   _imageUrlController.text,
                                   errorBuilder: (context, error, stackTrace) {
@@ -231,10 +236,20 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
+                                  suffixIcon: IconButton(
+                                    onPressed: () {
+                                      _videoUrlController.clear();
+                                      setState(() {
+                                        _showVideo = false;
+                                        _youtubePlayerController = null;
+                                      });
+                                    },
+                                    icon: const Icon(Icons.clear),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              if (_videoUrlController.text.isNotEmpty && _youtubePlayerController != null)
+                              if (_showVideo && _youtubePlayerController != null)
                                 YoutubePlayer(
                                   controller: _youtubePlayerController!,
                                   showVideoProgressIndicator: true,

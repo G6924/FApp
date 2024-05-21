@@ -40,7 +40,6 @@ class NotesListView extends StatelessWidget {
               },
               title: Text(
                 note.title,
-                maxLines: 1,
                 softWrap: true,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -48,22 +47,26 @@ class NotesListView extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              subtitle: Text(
-                note.text,
-                maxLines: 1,
-                softWrap: true,
-                overflow: TextOverflow.ellipsis,
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    note.text,
+                    softWrap: true,
+                  ),
+                  const SizedBox(height: 8),
+                  if (note.imageUrl.isNotEmpty)
+                    Image.network(
+                      note.imageUrl,
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                    ),
+                ],
               ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (note.imageUrl.isNotEmpty)
-                    Image.network(
-                      note.imageUrl,
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.cover,
-                    ),
                   if (note.videoUrl.isNotEmpty)
                     IconButton(
                       icon: const Icon(Icons.play_circle_fill),

@@ -116,7 +116,7 @@ class _ProfileViewState extends State<ProfileView> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
-                  backgroundColor: Colors.white,
+                  backgroundColor: Colors.black12,
                   textStyle: const TextStyle(fontSize: 16),
                 ),
               ),
